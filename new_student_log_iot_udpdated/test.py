@@ -13,7 +13,6 @@ from services.database_handler import DatabaseHandler
 from services.sms_handler import SMSHandler, start_sms_service
 
 
- 
 class StudentLog:
 
     def __init__(self, master):
