@@ -76,40 +76,40 @@ class StudentLog:
  
         # Load and display an animated GIF image
         self.image_frames = []
-        self.load_image_frames("/home/group5/Desktop/new_student_log_iot_udpdated/resources/resources/qr-code.gif", 0)  # Load frames of the GIF
+        self.load_image_frames("qr-code.gif", 0)  # Load frames of the GIF
         self.current_frame = 0
         self.animate_gif()
  
         # bg image
-        upper = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/upper.png")
+        upper = Image.open("upper.png")
         upper =upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=930, y=0)
  
-        lower = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/lower.png")
+        lower = Image.open("lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.lower_image_label.image = photo
         self.lower_image_label.place(x=0, y=420)
  
-        ustp = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/ustp.png")
+        ustp = Image.open("ustp.png")
         ustp = ustp.resize((100, 100))
         photo = ImageTk.PhotoImage(ustp)
         self.upper_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.upper_image_label.image = photo  
         self.upper_image_label.place(x=20, y=10)
  
-        dit = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/dit.jpg")
+        dit = Image.open("dit.jpg")
         dit = dit.resize((100, 100))
         photo = ImageTk.PhotoImage(dit)
         self.dit_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth= 1)
         self.dit_label.image = photo  
         self.dit_label.place(x=150, y=10)
  
-        citc = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/citc.jpg")
+        citc = Image.open("citc.jpg")
         citc = citc.resize((200, 100))
         photo = ImageTk.PhotoImage(citc)
         self.citc_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth= 1)
@@ -158,7 +158,7 @@ class StudentLog:
         # Load images for the slideshow
         self.slideshow_images = []
         for i in range(1, 5):  # Assuming you have images named slide1.jpg, slide2.jpg, slide3.jpg
-            image = Image.open(f"/home/group5/Desktop/new_student_log_iot_udpdated/resources/sample_{i}.png")
+            image = Image.open(f"sample_{i}.png")
             image = image.resize((1280,800))
             photo = ImageTk.PhotoImage(image)
             self.slideshow_images.append(photo)
@@ -194,7 +194,7 @@ class StudentLog:
             return False
 
     def go_to_compare(self, result):
-        csv_files = ['/home/group5/Desktop/new_student_log_iot_udpdated/resources/official_list_it_students.csv']
+        csv_files = ['official_list_it_students.csv']
         comparison_results = {"name": "", "phone": ""}
 
         for csv_file in csv_files:
@@ -286,35 +286,35 @@ class StudentLog:
         self.stop_idleness_monitor()
 
         # bg image
-        upper = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/upper.png")
+        upper = Image.open("upper.png")
         upper = upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=900, y=0)
 
-        lower = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/lower.png")
+        lower = Image.open("lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.lower_image_label.image = photo
         self.lower_image_label.place(x=0, y=350)
 
-        ustp = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/ustp.png")
+        ustp = Image.open("ustp.png")
         ustp = ustp.resize((100, 100))
         photo = ImageTk.PhotoImage(ustp)
         self.upper_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.upper_image_label.image = photo  
         self.upper_image_label.place(x=20, y=10)
 
-        dit = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/dit.jpg")
+        dit = Image.open("dit.jpg")
         dit = dit.resize((100, 100))
         photo = ImageTk.PhotoImage(dit)
         self.dit_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth=1)
         self.dit_label.image = photo  
         self.dit_label.place(x=150, y=10)
 
-        citc = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/citc.jpg")
+        citc = Image.open("citc.jpg")
         citc = citc.resize((200, 100))
         photo = ImageTk.PhotoImage(citc)
         self.citc_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth=1)
@@ -347,14 +347,14 @@ class StudentLog:
             widget.destroy()
 
         # bg image
-        upper = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/upper.png")
+        upper = Image.open("upper.png")
         upper = upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=930, y=0)
 
-        lower = Image.open("/home/group5/Desktop/new_student_log_iot_udpdated/resources/lower.png")
+        lower = Image.open("lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
