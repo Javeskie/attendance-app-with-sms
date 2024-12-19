@@ -14,7 +14,6 @@ from services.sms_handler import SMSHandler, start_sms_service
 
 
 class StudentLog:
-
     def __init__(self, master):
         self.master = master
         self.master.title("Student Log")
@@ -35,6 +34,9 @@ class StudentLog:
             dbname="postgres"
         )
 
+        # Start the retry process for pending data
+        self.start_retry_process()
+
         # Initialize the message queue for SMS
         self.message_queue = Queue()
 
@@ -48,16 +50,31 @@ class StudentLog:
         self.master.bind('<Control-x>', self.exit_app)
 
     def start_retry_process(self):
-        # Start the retry process for pending data
-        self.retry_process = self.db_handler.start_retry_process()
+        """
+        Starts the retry process for the database handler.
+        """
+        try:
+            self.retry_process = self.db_handler.start_retry_process()
+        except Exception as e:
+            print(f"Error starting retry process: {e}")
 
     def exit_app(self, event=None):
-        # Make sure to stop the retry process and SMS service when exiting
-        if hasattr(self, 'retry_process') and self.retry_process.is_alive():
-            self.retry_process.terminate()
-        if hasattr(self, 'sms_process') and self.sms_process.is_alive():
-            self.sms_process.terminate()
-        self.master.destroy()
+        """
+        Cleanly shuts down processes and closes the application.
+        """
+        try:
+            # Stop the retry process for pending data
+            if hasattr(self, 'retry_process') and self.retry_process.is_alive():
+                self.retry_process.terminate()
+
+            # Stop the SMS service
+            if hasattr(self, 'sms_process') and self.sms_process.is_alive():
+                self.sms_process.terminate()
+
+        except Exception as e:
+            print(f"Error while shutting down: {e}")
+        finally:
+            self.master.destroy()
 
  
     def create_first_page(self):
@@ -76,40 +93,40 @@ class StudentLog:
  
         # Load and display an animated GIF image
         self.image_frames = []
-        self.load_image_frames("/resources/qr-code.gif", 0)  # Load frames of the GIF
+        self.load_image_frames("new_student_log_iot_udpdated/resources/qr-code.gif", 0)  # Load frames of the GIF
         self.current_frame = 0
         self.animate_gif()
  
         # bg image
-        upper = Image.open("/resources/upper.png")
+        upper = Image.open("new_student_log_iot_udpdated/resources/upper.png")
         upper =upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=930, y=0)
  
-        lower = Image.open("/resources/lower.png")
+        lower = Image.open("new_student_log_iot_udpdated/resources/lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.lower_image_label.image = photo
         self.lower_image_label.place(x=0, y=420)
  
-        ustp = Image.open("/resources/ustp.png")
+        ustp = Image.open("new_student_log_iot_udpdated/resources/ustp.png")
         ustp = ustp.resize((100, 100))
         photo = ImageTk.PhotoImage(ustp)
         self.upper_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.upper_image_label.image = photo  
         self.upper_image_label.place(x=20, y=10)
  
-        dit = Image.open("/resources/dit.jpg")
+        dit = Image.open("new_student_log_iot_udpdated/resources/dit.jpg")
         dit = dit.resize((100, 100))
         photo = ImageTk.PhotoImage(dit)
         self.dit_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth= 1)
         self.dit_label.image = photo  
         self.dit_label.place(x=150, y=10)
  
-        citc = Image.open("/resources/citc.jpg")
+        citc = Image.open("new_student_log_iot_udpdated/resources/citc.jpg")
         citc = citc.resize((200, 100))
         photo = ImageTk.PhotoImage(citc)
         self.citc_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth= 1)
@@ -158,7 +175,7 @@ class StudentLog:
         # Load images for the slideshow
         self.slideshow_images = []
         for i in range(1, 5):  # Assuming you have images named slide1.jpg, slide2.jpg, slide3.jpg
-            image = Image.open(f"/resources/sample_{i}.png")
+            image = Image.open(f"new_student_log_iot_udpdated/resources/sample_{i}.png")
             image = image.resize((1280,800))
             photo = ImageTk.PhotoImage(image)
             self.slideshow_images.append(photo)
@@ -194,7 +211,7 @@ class StudentLog:
             return False
 
     def go_to_compare(self, result):
-        csv_files = ['/resources/official_list_it_students.csv']
+        csv_files = ['new_student_log_iot_udpdated/resources/official_list_it_students.csv']
         comparison_results = {"name": "", "phone": ""}
 
         for csv_file in csv_files:
@@ -236,27 +253,41 @@ class StudentLog:
                 student_name = comparison_results.get("name", "Unknown Student")
                 parent_contactnumber = comparison_results.get("phone", "")
 
-                self.submit_data(result, student_name, parent_contactnumber)
-
-                self.create_second_page(result, student_name)    
+                self.create_second_page(result, student_name, parent_contactnumber)    
 
         except Exception as e:
             print(f"Error: {e}")
 
 
-    def submit_data(self, student_lrn, student_name, parent_contactnumber):
+    def submit_data(self, result, student_name, parent_contactnumber):
         testing=True
 
-        attendance_time = ""
-        current_time = "" 
+        monitoring_time_ = ""
+        monitoring_date = ""
+
+        current_time = ""
+        current_date = "" 
 
         # If testing is True, use predefined times
         if testing:
-            attendance_time_str = "2024-12-16 07:44:00"
-            current_time_str = "2024-12-16 07:45:00"
+            # String representations of monitoring date and time
+            monitoring_time_str = "07:29:00"
+            monitoring_date_str = "2024-12-19"
+
+            current_time_str = "07:30:00"
+            current_date_str = "2024-12-19"
+
             # Convert the strings to datetime objects
-            attendance_time = datetime.strptime(attendance_time_str, "%Y-%m-%d %H:%M:%S")
-            current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S")
+            monitoring_time = datetime.strptime(monitoring_time_str, "%H:%M:%S")
+            monitoring_date = datetime.strptime(monitoring_date_str, "%Y-%m-%d")
+            current_time = datetime.strptime(current_time_str, "%H:%M:%S")
+            current_date = datetime.strptime(current_date_str, "%Y-%m-%d")
+
+            # Now extract the time and date components
+            monitoring_time = monitoring_time.time()  # Extracts the time (HH:MM:SS)
+            monitoring_date = monitoring_date.date()  # Extracts the date (YYYY-MM-DD)
+            current_time = current_time.time()  # Extracts the time (HH:MM:SS)
+            current_date = current_date.date()  # Extracts the date (YYYY-MM-DD)
 
         else:
             # Normal logic
@@ -264,9 +295,9 @@ class StudentLog:
             current_time = attendance_time.strftime("%I:%M %p")
 
         # Determine attendance status
-        if 7 <= attendance_time.hour <= 7 and 30 <= attendance_time.minute <= 45:
+        if 7 <= monitoring_time.hour <= 7 and 30 <= monitoring_time.minute <= 45:
             status = "on-time"
-        elif (7 <= attendance_time.hour <= 11) or (attendance_time.hour == 7 and attendance_time.minute > 45):
+        elif (7 <= monitoring_time.hour <= 11) or (monitoring_time.hour == 7 and monitoring_time.minute > 45):
             status = "late"
         else:
             status = "outside monitored hours"
@@ -274,47 +305,47 @@ class StudentLog:
         sms_message = f"Your child {student_name} has logged in at {current_time} and is {status}."
 
         # Use the new DatabaseHandler class to handle data submission
-        self.db_handler.submit_data(student_lrn, attendance_time)
+        self.db_handler.submit_data(result, monitoring_date, monitoring_time)
 
         # Call the add_message_to_queue method via the sms_handler instance
         # self.sms_handler.add_message_to_queue(parent_contactnumber, sms_message)
 
-    def create_second_page(self, submission_result, student_name):
+    def create_second_page(self, result, student_name, parent_contactnumber):
         # Clear the frame
         for widget in self.frame.winfo_children():
             widget.destroy()
         self.stop_idleness_monitor()
 
         # bg image
-        upper = Image.open("/resources/upper.png")
+        upper = Image.open("new_student_log_iot_udpdated/resources/upper.png")
         upper = upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=900, y=0)
 
-        lower = Image.open("/resources/lower.png")
+        lower = Image.open("new_student_log_iot_udpdated/resources/lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.lower_image_label.image = photo
         self.lower_image_label.place(x=0, y=350)
 
-        ustp = Image.open("/resources/ustp.png")
+        ustp = Image.open("new_student_log_iot_udpdated/resources/ustp.png")
         ustp = ustp.resize((100, 100))
         photo = ImageTk.PhotoImage(ustp)
         self.upper_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.upper_image_label.image = photo  
         self.upper_image_label.place(x=20, y=10)
 
-        dit = Image.open("/resources/dit.jpg")
+        dit = Image.open("new_student_log_iot_udpdated/resources/dit.jpg")
         dit = dit.resize((100, 100))
         photo = ImageTk.PhotoImage(dit)
         self.dit_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth=1)
         self.dit_label.image = photo  
         self.dit_label.place(x=150, y=10)
 
-        citc = Image.open("/resources/citc.jpg")
+        citc = Image.open("new_student_log_iot_udpdated/resources/citc.jpg")
         citc = citc.resize((200, 100))
         photo = ImageTk.PhotoImage(citc)
         self.citc_label = tk.Label(self.frame, image=photo, bg="blue", borderwidth=1)
@@ -338,6 +369,9 @@ class StudentLog:
         student_info_label = tk.Label(self.frame, text=student_info_message, font=("Arial", 28, "bold"), fg="#27099c", bg="white", anchor="center")
         student_info_label.place(relx=0.5, rely=0.6, anchor="center")
 
+        
+        self.submit_data(result, student_name, parent_contactnumber)
+
         # Schedule return to the first page after 5 seconds
         self.master.after(3000, self.go_to_first_page)
 
@@ -347,14 +381,14 @@ class StudentLog:
             widget.destroy()
 
         # bg image
-        upper = Image.open("/resources/upper.png")
+        upper = Image.open("new_student_log_iot_udpdated/resources/upper.png")
         upper = upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
         self.static_image_label.place(x=930, y=0)
 
-        lower = Image.open("/resources/lower.png")
+        lower = Image.open("new_student_log_iot_udpdated/resources/lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
@@ -362,7 +396,7 @@ class StudentLog:
         self.lower_image_label.place(x=0, y=420)
 
         # Display student name and attendance time
-        student_info = f"/resources/Student: {student_name}\nTime: {attendance_time}"
+        student_info = f"new_student_log_iot_udpdated/resources/Student: {student_name}\nTime: {attendance_time}"
         student_info_label = tk.Label(self.frame, text=student_info, font=("Arial", 24, "bold"), fg="black", bg="white")
         student_info_label.place(relx=0.5, rely=0.5, anchor="center")
 

@@ -45,11 +45,15 @@ class DatabaseHandler:
             connection.close()
 
     # Commit data to the database
-    def commit_data_to_db(self, student_lrn, attendance_time):
+    def commit_data_to_db(self, student_lrn, monitoring_date, monitoring_time):
         try:
-            query = "SELECT process_attendance(%s, %s);"
+            # print(f"Print Test: {student_lrn} + {monitoring_date} + {monitoring_time}")
+        
+            # Explicitly cast monitoring_date to DATE and monitoring_time to TIME in the query
+            query = "SELECT process_monitoring(%s, %s::DATE, %s::TIME);"
+        
             with self.get_connection() as cursor:
-                cursor.execute(query, (student_lrn, attendance_time))
+                cursor.execute(query, (student_lrn, monitoring_date, monitoring_time))
                 result = cursor.fetchone()[0]
                 print(f"Attendance submission result: {result}")
                 return result
@@ -60,14 +64,16 @@ class DatabaseHandler:
             print(f"Unexpected error committing data: {e}")
             return "error"
 
+
+
     # Submit data (either immediate or from queue if no internet)
-    def submit_data(self, student_lrn, attendance_time):
+    def submit_data(self, student_lrn, monitoring_date, monitoring_time):
         if not self.check_internet():
             print("No internet connection. Queuing data.")
-            self.pending_data_queue.append((student_lrn, attendance_time))
+            self.pending_data_queue.append((student_lrn, monitoring_date, monitoring_time))
             return "queued"
 
-        result = self.commit_data_to_db(student_lrn, attendance_time)
+        result = self.commit_data_to_db(student_lrn, monitoring_date, monitoring_time)
         return result
 
     # Function to retry pending data submissions
@@ -76,9 +82,9 @@ class DatabaseHandler:
             if self.check_internet():
                 print("Internet available, retrying pending data...")
                 while self.pending_data_queue:
-                    student_lrn, attendance_time = self.pending_data_queue.popleft()
-                    print(f"Retrying submission for {student_lrn}, {attendance_time}")
-                    self.commit_data_to_db(student_lrn, attendance_time)
+                    student_lrn, monitoring_date, monitoring_time = self.pending_data_queue.popleft()
+                    print(f"Retrying submission for {student_lrn}, {monitoring_date}, {monitoring_time}")
+                    self.commit_data_to_db(student_lrn, monitoring_date, monitoring_time)
             else:
                 print("No internet connection. Waiting to retry...")
             time.sleep(5)
