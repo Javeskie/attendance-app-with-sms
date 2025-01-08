@@ -5,6 +5,7 @@ import requests
 import re
 import psycopg2
 import socket
+import os
 
 from multiprocessing import Queue
 from datetime import datetime
@@ -12,6 +13,7 @@ from datetime import datetime
 from services.database_handler import DatabaseHandler
 from services.sms_handler import SMSHandler, start_sms_service
 
+student_contact_list = []
 
 class StudentLog:
     def __init__(self, master):
@@ -41,13 +43,26 @@ class StudentLog:
         self.message_queue = Queue()
 
         # Create an instance of SMSHandler
-        self.sms_handler = SMSHandler(self.message_queue)
+        # self.sms_handler = SMSHandler(self.message_queue)
 
         # Start the SMS service to begin processing messages
-        self.sms_process = start_sms_service(self.message_queue)
+        # self.sms_process = start_sms_service(self.message_queue)
+
+        
+        # Fetch and assign student contact list
+        self.load_student_contacts()
 
         self.create_first_page()
         self.master.bind('<Control-x>', self.exit_app)
+
+    def load_student_contacts(self):
+        """Fetch student contacts from the database and assign to the global list"""
+        global student_contact_list
+        try:
+            student_contact_list = self.db_handler.get_student_contacts()  # Get the contacts as array of tuples
+            print(f"Student contacts loaded: {student_contact_list}")
+        except Exception as e:
+            print(f"Error loading student contacts: {e}")
 
     def start_retry_process(self):
         """
@@ -210,105 +225,81 @@ class StudentLog:
         else:
             return False
 
-    def go_to_compare(self, result):
-        csv_files = ['new_student_log_iot_udpdated/resources/official_list_it_students.csv']
-        comparison_results = {"name": "", "phone": ""}
+    def go_to_compare(self, student):
+        global student_contact_list
 
-        for csv_file in csv_files:
-            try:
-                with open(csv_file, 'r', encoding="latin-1") as file:
-                    csv_reader = csv.reader(file)
-                    next(csv_reader, None)  # Skip header row
+        # Iterate through the student_contact_list (2D list)
+        for entry in student_contact_list:
+            # Compare the LRN (first element of student) with each entry in student_contact_list
+            if str(student).strip() == str(entry[0]).strip():  # Match LRN
+                student = [entry[0], entry[1], entry[2]]  # Overwrite student data with the matched contact
+                print(f"Match found: Name={entry[1]}, Phone={entry[2]}")
+                return student  # Stop after the first match
 
-                    for row in csv_reader:
-                        if len(row) >= 3 and result == row[0]:  # Ensure there are at least 3 columns
-                            comparison_results["name"] = row[1]  # Name
-                            comparison_results["phone"] = row[2]  # Phone number
-                            print(f"Match found: Name={row[1]}, Phone={row[2]}")
-                            return comparison_results  # Stop after the first match
-            except FileNotFoundError:
-                print(f"File not found: {csv_file}")
-                return comparison_results  # Return empty if file not found
-
-        print("No match found in CSV.")
-        return comparison_results
-
+        # If no match is found
+        print("No match found in student_contact_list.")
+        return [student, "Unknown Student", ""]  # Return the original student with empty values for name/phone
 
 
     def capture_information(self, event):
         try:
             input_text = self.entry.get()
-            result = None
+            student = None
 
             # Use regular expression to find a 10-digit LRN
             match = re.search(r'\d{10}', input_text)
             if match:
-                result = match.group(0)
+                student = match.group(0)
 
-            if result:
-                comparison_results = self.go_to_compare(result)
+            if student:
+                comparison_results = self.go_to_compare(student)
                 attendance_time = datetime.now()
 
-                # Extract student name and phone number
-                student_name = comparison_results.get("name", "Unknown Student")
-                parent_contactnumber = comparison_results.get("phone", "")
+                # Directly access the student data from the list
+                student_name = comparison_results[1] if len(comparison_results) > 1 else "Unknown Student"
+                parent_contactnumber = comparison_results[2] if len(comparison_results) > 2 else ""
 
-                self.create_second_page(result, student_name, parent_contactnumber)    
+                self.create_second_page(student, student_name, parent_contactnumber)    
 
         except Exception as e:
             print(f"Error: {e}")
 
 
     def submit_data(self, result, student_name, parent_contactnumber):
-        testing=True
+        testing = True
+        current_time_str = ""
+        current_date_str = ""
 
-        monitoring_time_ = ""
-        monitoring_date = ""
-
-        current_time = ""
-        current_date = "" 
-
-        # If testing is True, use predefined times
         if testing:
-            # String representations of monitoring date and time
-            monitoring_time_str = "07:29:00"
-            monitoring_date_str = "2024-12-19"
-
+            # Predefined times for testing
             current_time_str = "07:30:00"
-            current_date_str = "2024-12-19"
+            current_date_str = "2025-01-08"
 
-            # Convert the strings to datetime objects
-            monitoring_time = datetime.strptime(monitoring_time_str, "%H:%M:%S")
-            monitoring_date = datetime.strptime(monitoring_date_str, "%Y-%m-%d")
-            current_time = datetime.strptime(current_time_str, "%H:%M:%S")
-            current_date = datetime.strptime(current_date_str, "%Y-%m-%d")
-
-            # Now extract the time and date components
-            monitoring_time = monitoring_time.time()  # Extracts the time (HH:MM:SS)
-            monitoring_date = monitoring_date.date()  # Extracts the date (YYYY-MM-DD)
-            current_time = current_time.time()  # Extracts the time (HH:MM:SS)
-            current_date = current_date.date()  # Extracts the date (YYYY-MM-DD)
-
+            # Convert strings to datetime objects
+            current_time = datetime.strptime(current_time_str, "%H:%M:%S").time()
+            current_date = datetime.strptime(current_date_str, "%Y-%m-%d").date()
         else:
-            # Normal logic
-            attendance_time = datetime.now()
-            current_time = attendance_time.strftime("%I:%M %p")
+            # Use the current date and time
+            now = datetime.now()
+            current_time = now.time()
+            current_date = now.date()
 
         # Determine attendance status
-        if 7 <= monitoring_time.hour <= 7 and 30 <= monitoring_time.minute <= 45:
+        if 7 <= current_time.hour <= 7 and 30 <= current_time.minute <= 45:
             status = "on-time"
-        elif (7 <= monitoring_time.hour <= 11) or (monitoring_time.hour == 7 and monitoring_time.minute > 45):
+        elif (7 <= current_time.hour <= 11) or (current_time.hour == 7 and current_time.minute > 45):
             status = "late"
         else:
             status = "outside monitored hours"
 
-        sms_message = f"Your child {student_name} has logged in at {current_time} and is {status}."
+        sms_message = f"Your child {student_name} has logged in at {current_time.strftime('%H:%M:%S')} and is {status}."
 
-        # Use the new DatabaseHandler class to handle data submission
-        self.db_handler.submit_data(result, monitoring_date, monitoring_time)
+        # Submit data to the database
+        self.db_handler.submit_data(result, current_date, current_time)
 
-        # Call the add_message_to_queue method via the sms_handler instance
+        # Queue SMS message
         # self.sms_handler.add_message_to_queue(parent_contactnumber, sms_message)
+
 
     def create_second_page(self, result, student_name, parent_contactnumber):
         # Clear the frame
@@ -316,21 +307,22 @@ class StudentLog:
             widget.destroy()
         self.stop_idleness_monitor()
 
-        # bg image
+        # Background images
         upper = Image.open("new_student_log_iot_udpdated/resources/upper.png")
         upper = upper.resize((400, 300))
         photo = ImageTk.PhotoImage(upper)
         self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.static_image_label.image = photo  
-        self.static_image_label.place(x=900, y=0)
+        self.static_image_label.place(x=930, y=0)
 
         lower = Image.open("new_student_log_iot_udpdated/resources/lower.png")
         lower = lower.resize((400, 300))
         photo = ImageTk.PhotoImage(lower)
         self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
         self.lower_image_label.image = photo
-        self.lower_image_label.place(x=0, y=350)
+        self.lower_image_label.place(x=0, y=420)
 
+        # Logos
         ustp = Image.open("new_student_log_iot_udpdated/resources/ustp.png")
         ustp = ustp.resize((100, 100))
         photo = ImageTk.PhotoImage(ustp)
@@ -352,11 +344,27 @@ class StudentLog:
         self.citc_label.image = photo  
         self.citc_label.place(x=1050, y=10)
 
-        # Generate time of attendance
-        current_time = datetime.now().replace(microsecond=0).strftime("%I:%M:%S")
-        current_date = datetime.now().replace(microsecond=0).strftime("%B %d, %Y")
+        # Get student image based on LRN
+        student_image_path = f"new_student_log_iot_udpdated/resources/students/{result}.jpg"  # Assuming the image folder is named 'student_images' and the image is named after the student's LRN.
+        if not os.path.exists(student_image_path):  # Check if the student's image exists
+            student_image_path = "new_student_log_iot_udpdated/resources/students/default.jpg"  # Use default image if not found
 
-        # Default message and status color (regardless of the submission result)
+        # Load and resize the image
+        student_image = Image.open(student_image_path)
+        student_image = student_image.resize((128, 128))  # Resize image as needed
+        student_photo = ImageTk.PhotoImage(student_image)
+
+        # Display student image on the left side
+        student_image_label = tk.Label(self.frame, image=student_photo, bg="white")
+        student_image_label.image = student_photo  # Keep a reference to avoid garbage collection
+        student_image_label.place(x=365, y=415)  # Adjust the position as needed
+
+        # Generate time and date from a single `datetime.now()` call
+        now = datetime.now().replace(microsecond=0)
+        current_time = now.strftime("%I:%M:%S %p")  # Add AM/PM indicator for clarity
+        current_date = now.strftime("%B %d, %Y")
+
+        # Default message and status color
         message = "Scan Successful"
         status_color = "#100440"  # Blue
 
@@ -367,40 +375,12 @@ class StudentLog:
         # Display student information (fixed color for student info)
         student_info_message = f"{student_name}\nTime: {current_time}\nDate: {current_date}"
         student_info_label = tk.Label(self.frame, text=student_info_message, font=("Arial", 28, "bold"), fg="#27099c", bg="white", anchor="center")
-        student_info_label.place(relx=0.5, rely=0.6, anchor="center")
+        student_info_label.place(relx=0.55, rely=0.6, anchor="center")
 
-        
+        # Call to submit the data
         self.submit_data(result, student_name, parent_contactnumber)
 
-        # Schedule return to the first page after 5 seconds
-        self.master.after(3000, self.go_to_first_page)
-
-   
-    def go_to_last(self, student_name, attendance_time):
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-
-        # bg image
-        upper = Image.open("new_student_log_iot_udpdated/resources/upper.png")
-        upper = upper.resize((400, 300))
-        photo = ImageTk.PhotoImage(upper)
-        self.static_image_label = tk.Label(self.frame, image=photo, bg="white")
-        self.static_image_label.image = photo  
-        self.static_image_label.place(x=930, y=0)
-
-        lower = Image.open("new_student_log_iot_udpdated/resources/lower.png")
-        lower = lower.resize((400, 300))
-        photo = ImageTk.PhotoImage(lower)
-        self.lower_image_label = tk.Label(self.frame, image=photo, bg="white")
-        self.lower_image_label.image = photo
-        self.lower_image_label.place(x=0, y=420)
-
-        # Display student name and attendance time
-        student_info = f"new_student_log_iot_udpdated/resources/Student: {student_name}\nTime: {attendance_time}"
-        student_info_label = tk.Label(self.frame, text=student_info, font=("Arial", 24, "bold"), fg="black", bg="white")
-        student_info_label.place(relx=0.5, rely=0.5, anchor="center")
-
-        # Schedule return to first page after 3 seconds
+        # Schedule return to the first page after 3 seconds
         self.master.after(3000, self.go_to_first_page)
 
 

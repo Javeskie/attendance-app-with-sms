@@ -44,6 +44,36 @@ class DatabaseHandler:
             cursor.close()
             connection.close()
 
+    # Function to fetch student contacts and return them as a 2D array
+    def get_student_contacts(self):
+        try:
+            query = "SELECT student_lrn, student_name, parent_phone FROM student_contacts;"
+            with self.get_connection() as cursor:
+                cursor.execute(query)
+                contacts = cursor.fetchall()  # This returns an array of tuples
+                print("Student Contacts Retrieved:")
+
+                # Convert the list of tuples to a 2D array
+                student_contacts = []
+                for contact in contacts:
+                    # Split the name and ensure the correct format for the middle name
+                    student_lrn = contact[0]
+                    student_name = contact[1]
+                    phone_number = contact[2]           
+                
+                    student_contacts.append([student_lrn, student_name, phone_number])
+                
+                    print([student_lrn, student_name, phone_number])  # Print the formatted contact
+
+                print(f"Student contacts loaded: {student_contacts}")
+                return student_contacts  # Return the 2D list of student contacts
+        except psycopg2.Error as e:
+            print(f"Database Error: {e}")
+            return []  # Return an empty list if there's a database error
+        except Exception as e:
+            print(f"Unexpected error fetching student contacts: {e}")
+            return []  # Return an empty list in case of unexpected errors
+
     # Commit data to the database
     def commit_data_to_db(self, student_lrn, monitoring_date, monitoring_time):
         try:
